@@ -13,12 +13,18 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 import os
 from pathlib import Path
 from dotenv import load_dotenv
+from datetime import timedelta
+from .logging import LOGGING
+from django.core.exceptions import ImproperlyConfigured
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Load environment variables from .env file
 load_dotenv()
+
+# Custom user model
+AUTH_USER_MODEL = 'accounts.User'
 
 
 # Quick-start development settings - unsuitable for production
@@ -27,8 +33,11 @@ load_dotenv()
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.getenv('DJANGO_SECRET_KEY')
 
+if not SECRET_KEY:
+    raise ImproperlyConfigured("The SECRET_KEY setting must not be empty.")
+
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv('DEBUG', 'False') == 'True'
+DEBUG = os.getenv('DEBUG') == 'True'
 
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '').split(',')
 
@@ -45,9 +54,11 @@ INSTALLED_APPS = [
     
     # Local apps
     'store',
+    'accounts',
     
     # Third-party apps
     'rest_framework',
+    'rest_framework_simplejwt',
     'django_filters',
     'corsheaders',
 ]
@@ -61,6 +72,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
 ]
 
 ROOT_URLCONF = 'ecommerce.urls'
@@ -130,6 +142,29 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
+# Directory where collected static files are stored
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
+# Additional static files directory (for development)
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, 'static'),  # Optional for custom static files during development
+]
+
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+# Media files (user uploads)
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
 
 # CORS settings
 CORS_ALLOWED_ORIGINS = os.getenv('CORS_ALLOWED_ORIGINS', '').split(',')
+
+# JWT settings
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(days=int(os.getenv('ACCESS_TOKEN_LIFETIME'))),
+    "REFRESH_TOKEN_LIFETIME": timedelta(hours=int(os.getenv('REFRESH_TOKEN_LIFETIME'))),
+    "ALGORITHM": os.getenv('JWT_ALGORITHM', 'HS256'),
+    "SIGNING_KEY": SECRET_KEY,
+    "AUTH_HEADER_TYPES": (os.getenv('AUTH_HEADER_TYPE'),),
+}
